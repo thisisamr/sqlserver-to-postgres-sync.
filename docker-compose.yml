@@ -35,7 +35,6 @@ services:
       - ./init/init.sql:/init.sql
       - ./entry-point.sh:/entry-point.sh
     command: ["/bin/bash", "/entry-point.sh"]
-    # command: /bin/bash -c "sleep 15 && /opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P YourStrong!Passw0rd -i /init.sql && tail -f /dev/null"
 
   postgres:
     image: postgres:15
@@ -72,10 +71,6 @@ services:
 
     volumes:
       - ./debezium:/kafka/connect/debezium
-      - ./connect-entrypoint.sh:/connect-entrypoint.sh
-    # command: ["/bin/bash", "/connect-entrypoint.sh"]
-
-  # command: "bash -c \"sleep 30 && curl -X POST -H 'Content-Type: application/json' --data @/kafka/connect/register-sqlserver-connector.sh http://connect:8083/connectors && tail -f /dev/null\""
   node-sync:
     build: ./node-sync
     depends_on: [connect, postgres]

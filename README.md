@@ -1,10 +1,6 @@
----
-
 # 🔄 SQL Server to PostgreSQL Real-Time Sync with Debezium, Kafka, and Node.js
 
 > **Real-time Change Data Capture (CDC)** between SQL Server and PostgreSQL using Debezium, Kafka, and a Node.js consumer.
-
----
 
 ## 📌 Project Overview
 

@@ -1,0 +1,96 @@
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: kafka
+    depends_on: [zookeeper]
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true" # Add this
+
+    ports:
+      - "9092:9092"
+
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2019-latest
+    container_name: sqlserver
+    environment:
+      SA_PASSWORD: "YourStrong!Passw0rd"
+      ACCEPT_EULA: "Y"
+      MSSQL_AGENT_ENABLED: true
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+      - ./init/init.sql:/init.sql
+      - ./entry-point.sh:/entry-point.sh
+    command: ["/bin/bash", "/entry-point.sh"]
+    # command: /bin/bash -c "sleep 15 && /opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P YourStrong!Passw0rd -i /init.sql && tail -f /dev/null"
+
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init/init-pg-db:/docker-entrypoint-initdb.d/
+
+  connect:
+    image: debezium/connect:2.6
+    container_name: connect
+    depends_on: [kafka, sqlserver]
+    ports:
+      - "8083:8083"
+    environment:
+      BOOTSTRAP_SERVERS: kafka:9092
+      GROUP_ID: 1
+      CONFIG_STORAGE_TOPIC: connect-configs
+      OFFSET_STORAGE_TOPIC: connect-offsets
+      STATUS_STORAGE_TOPIC: connect-status
+      KEY_CONVERTER_SCHEMAS_ENABLE: "false"
+      CONNECT_KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_REST_ADVERTISED_HOST_NAME: connect
+      CONNECT_PLUGIN_PATH: /kafka/connect/debezium
+      CONNECTORS_PATH: /kafka/connect
+      VALUE_CONVERTER_SCHEMAS_ENABLE: "false"
+
+    volumes:
+      - ./debezium:/kafka/connect/debezium
+      - ./connect-entrypoint.sh:/connect-entrypoint.sh
+    # command: ["/bin/bash", "/connect-entrypoint.sh"]
+
+  # command: "bash -c \"sleep 30 && curl -X POST -H 'Content-Type: application/json' --data @/kafka/connect/register-sqlserver-connector.sh http://connect:8083/connectors && tail -f /dev/null\""
+  node-sync:
+    build: ./node-sync
+    depends_on: [connect, postgres]
+    environment:
+      KAFKA_BROKER: kafka:9092
+      POSTGRES_URL: postgres://postgres:postgres@postgres:5432/testdb
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    ports:
+      - "8080:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+    depends_on:
+      - kafka
+volumes:
+  sqlserver_data:
+  postgres_data:

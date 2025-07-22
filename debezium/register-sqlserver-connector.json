@@ -1,0 +1,18 @@
+{
+  "name": "sqlserver-connector",
+  "config": {
+    "connector.class": "io.debezium.connector.sqlserver.SqlServerConnector",
+    "database.encrypt": "false",
+    "database.user": "sa",
+    "topic.prefix": "sqlserver",
+    "database.names": "testdb",
+    "database.hostname": "sqlserver",
+    "database.password": "YourStrong!Passw0rd",
+    "database.server.name": "sqlserver",
+    "table.include.list": "dbo.Users",
+    "database.port": "1433",
+    "snapshot.mode": "initial",
+    "schema.history.internal.kafka.topic": "dbhistory.sqlserver",
+    "schema.history.internal.kafka.bootstrap.servers": "kafka:9092"
+  }
+}
